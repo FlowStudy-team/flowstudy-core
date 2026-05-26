@@ -2,13 +2,51 @@
 *.class
 
 # Log file
-*.log
+# Local secrets and environment variables
+.env
+.env.*
+!.env.example
+
+# Local Spring profiles with real credentials
+src/main/resources/application-local.yml
+src/main/resources/application-local.yaml
+src/main/resources/application-dev-local.yml
+src/main/resources/application-dev-local.yaml
+src/main/resources/application-prod-local.yml
+src/main/resources/application-prod-local.yaml
+*.local
+
+# Java build output
+target/
+**/target/
+build/
+**/build/
+out/
+**/out/
+
+# Maven local repository/cache copied into the project by mistake
+.m2/
+**/.m2/
+target/m2/
+**/target/m2/
+
+# Logs and runtime files
+logs/
+
+*.pid
 
 # BlueJ files
 *.ctxt
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
+# IDE/editor files
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
 
 # Package Files #
 *.jar
@@ -22,3 +60,6 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+# OS files
+.DS_Store
+Thumbs.db
