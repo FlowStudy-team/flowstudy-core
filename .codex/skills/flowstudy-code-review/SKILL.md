@@ -1,4 +1,3 @@
-
 ---
 name: flowstudy-code-review
 description: Use this skill when reviewing FlowStudy changes before commit or PR, especially checking API contracts, Result<T>, ErrorCode, traceId, security, RabbitMQ, database consistency, tests, secrets, and maintainability.
