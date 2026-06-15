@@ -1,12 +1,14 @@
 ---
 name: flowstudy-core-feature
-description: Use this skill when implementing or modifying a feature in flowstudy-core, including Spring Boot Controller, Service, Mapper, DTO, VO, Result<T>, ErrorCode, JWT security, MyBatis-Plus, Redis limit, or RabbitMQ integration.
+description: Use this skill when implementing or modifying a feature in flowstudy-core, including Spring Boot Controller, Service, Mapper, DTO, VO, Result<T>, ErrorCode, JWT security, MyBatis-Plus, Redis limit, RabbitMQ integration, branch naming, and final commit message recommendation.
 
 ---
 
 # FlowStudy Core Feature Skill
 
 Use this skill to implement features in the `flowstudy-core` repository safely and consistently.
+
+This skill is for coding assistance and workflow guidance. It may recommend a branch name and a commit message, but it must not run `git commit`, `git push`, or create a Pull Request unless the user explicitly asks for that action.
 
 ## Trigger examples
 
@@ -18,6 +20,8 @@ Use this skill when the user says things like:
 - "接入 Judge 结果消费"
 - "在 flowstudy-core 里加一个功能"
 - "按照 core plan 开发下一阶段"
+- "帮我为这个功能创建合适分支名"
+- "这个功能完成后 commit message 应该怎么写"
 
 ## Core service responsibility
 
@@ -48,6 +52,91 @@ Recommended docs:
 
 If docs are not in the current repo, search sibling folders such as `../flowstudy-infra/docs/`.
 
+## Git workflow guidance
+
+Follow FlowStudy Git Flow, but do not perform commit or push automatically.
+
+### Before editing
+
+1. Inspect the current branch and working tree when possible:
+
+```bash
+git status
+git branch --show-current
+```
+
+2. If the current branch is `main`, recommend creating a feature branch before coding.
+3. If there are unrelated uncommitted changes, do not overwrite them. Ask the user before editing files that may conflict.
+4. Use a branch name based on the task scope.
+
+### Branch naming rules
+
+Use this format:
+
+```text
+<type>/<scope>-<short-description>
+```
+
+Recommended `type` values:
+
+- `feat` for new features or APIs
+- `fix` for bug fixes
+- `refactor` for internal restructuring without behavior change
+- `docs` for documentation-only changes
+- `test` for test-only changes
+- `chore` for build, dependency, config, or maintenance tasks
+
+Recommended branch names for FlowStudy Core phases:
+
+```text
+feat/core-init
+feat/common-contract
+feat/database-base
+feat/auth-user
+feat/auth-register-login
+feat/article-chapter-query
+feat/problem-query-api
+feat/submission-mq-publish
+feat/judge-result-consumer
+feat/redis-rate-limit
+feat/tracking-events
+feat/ai-context-api
+feat/admin-content-manage
+```
+
+If the user asks to start a new feature, output a recommended branch creation command, for example:
+
+```bash
+git switch main
+git pull origin main
+git switch -c feat/auth-register-login
+```
+
+Do not run these commands unless the user explicitly asks.
+
+### Commit message recommendation rules
+
+At the end of a task, output a suggested Angular Conventional Commit message only. Do not run `git commit`.
+
+Use this format:
+
+```text
+<type>: <summary>
+```
+
+Examples:
+
+```text
+feat: add user authentication APIs
+feat: add article and chapter query APIs
+feat: add code submission and judge task publishing
+feat: add judge result consumer
+fix: handle expired JWT authentication errors
+refactor: simplify global exception handling
+```
+
+If the task changes multiple areas, prefer the main user-visible change in the summary.
+
 ## Preferred early-stage project structure
 
 For early MVP development, the project may use a traditional layered structure:
@@ -70,6 +159,31 @@ com.flowstudy.core
 ```
 
 Do not force a large package refactor unless the user asks for it. Keep changes compatible with this early-stage structure.
+
+## Implementation workflow
+
+When implementing a feature, follow this order:
+
+1. Clarify the task scope.
+2. Identify the matching development phase.
+3. Recommend a branch name if the user has not already created one.
+4. Read relevant docs and existing code.
+5. Implement the smallest vertical slice that works end-to-end.
+6. Keep API behavior aligned with the REST contract.
+7. Keep database fields aligned with the database contract.
+8. Keep MQ messages aligned with the RabbitMQ contract.
+9. Add or update tests where the project already has a test setup.
+10. Run the most relevant available checks.
+11. Summarize changes and provide a suggested commit message.
+
+Do not perform these actions unless explicitly requested:
+
+- `git commit`
+- `git push`
+- creating a Pull Request
+- deleting branches
+- force pushing
+- rebasing public branches
 
 ## Implementation rules
 
@@ -171,9 +285,17 @@ If tests cannot run because the environment is missing dependencies, say so clea
 
 At the end of the task, summarize:
 
+- recommended branch name, if a new branch is appropriate
 - feature implemented
 - interfaces added or changed
 - database tables touched
 - MQ messages added or changed
 - tests run
 - known limitations or follow-up work
+- suggested commit message
+
+The final suggested commit message should be shown as plain text, for example:
+
+```text
+feat: add user authentication APIs
+```
