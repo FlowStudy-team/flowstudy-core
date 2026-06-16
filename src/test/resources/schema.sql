@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS fs_problem;
+DROP TABLE IF EXISTS fs_chapter;
+DROP TABLE IF EXISTS fs_article;
 DROP TABLE IF EXISTS sys_user;
 
 CREATE TABLE sys_user (
@@ -15,4 +18,46 @@ CREATE TABLE sys_user (
     deleted TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_sys_user_username UNIQUE (username),
     CONSTRAINT uk_sys_user_email UNIQUE (email)
+);
+
+CREATE TABLE fs_article (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    summary VARCHAR(512),
+    cover_url VARCHAR(512),
+    author_id BIGINT,
+    status VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
+    view_count BIGINT NOT NULL DEFAULT 0,
+    like_count BIGINT NOT NULL DEFAULT 0,
+    sort_order INT NOT NULL DEFAULT 0,
+    published_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE fs_chapter (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    article_id BIGINT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content_md CLOB NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    estimated_minutes INT,
+    status VARCHAR(32) NOT NULL DEFAULT 'PUBLISHED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE fs_problem (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    chapter_id BIGINT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description_md CLOB NOT NULL,
+    difficulty VARCHAR(32) NOT NULL DEFAULT 'EASY',
+    status VARCHAR(32) NOT NULL DEFAULT 'PUBLISHED',
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0
 );
