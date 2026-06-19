@@ -1,4 +1,5 @@
 DROP TABLE IF EXISTS fs_code_template;
+DROP TABLE IF EXISTS fs_submission;
 DROP TABLE IF EXISTS fs_problem_testcase;
 DROP TABLE IF EXISTS fs_problem;
 DROP TABLE IF EXISTS fs_chapter;
@@ -92,4 +93,21 @@ CREATE TABLE fs_code_template (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_fs_code_template_problem_language UNIQUE (problem_id, language)
+);
+
+CREATE TABLE fs_submission (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    problem_id BIGINT NOT NULL,
+    language VARCHAR(32) NOT NULL,
+    code CLOB NOT NULL,
+    status VARCHAR(64) NOT NULL DEFAULT 'PENDING',
+    score INT NOT NULL DEFAULT 0,
+    time_used_ms INT,
+    memory_used_kb INT,
+    compile_message CLOB,
+    runtime_message CLOB,
+    trace_id VARCHAR(64),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
