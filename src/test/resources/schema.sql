@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS fs_code_template;
+DROP TABLE IF EXISTS fs_problem_testcase;
 DROP TABLE IF EXISTS fs_problem;
 DROP TABLE IF EXISTS fs_chapter;
 DROP TABLE IF EXISTS fs_article;
@@ -55,9 +57,39 @@ CREATE TABLE fs_problem (
     title VARCHAR(255) NOT NULL,
     description_md CLOB NOT NULL,
     difficulty VARCHAR(32) NOT NULL DEFAULT 'EASY',
+    input_description CLOB,
+    output_description CLOB,
+    support_languages VARCHAR(255) NOT NULL DEFAULT 'java,cpp,go,python',
+    time_limit_ms INT NOT NULL DEFAULT 1000,
+    memory_limit_mb INT NOT NULL DEFAULT 256,
     status VARCHAR(32) NOT NULL DEFAULT 'PUBLISHED',
+    submit_count BIGINT NOT NULL DEFAULT 0,
+    accepted_count BIGINT NOT NULL DEFAULT 0,
     sort_order INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE fs_problem_testcase (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    problem_id BIGINT NOT NULL,
+    input_text CLOB NOT NULL,
+    expected_output CLOB NOT NULL,
+    is_sample TINYINT NOT NULL DEFAULT 0,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE fs_code_template (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    problem_id BIGINT NOT NULL,
+    language VARCHAR(32) NOT NULL,
+    template_code CLOB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_fs_code_template_problem_language UNIQUE (problem_id, language)
 );
