@@ -56,6 +56,10 @@ public class ProblemService {
         return ProblemDetailResponse.from(problem, sampleCases);
     }
 
+    public Problem ensurePublishedProblemExists(Long problemId) {
+        return findPublishedProblemOrThrow(problemId);
+    }
+
     public ProblemTemplateResponse getCodeTemplate(Long problemId, String language) {
         findPublishedProblemOrThrow(problemId);
         String normalizedLanguage = normalizeLanguage(language);
