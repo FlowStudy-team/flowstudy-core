@@ -10,15 +10,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,8 +41,12 @@ class SubmissionControllerIntegrationTests {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @MockitoBean
+    private RabbitTemplate rabbitTemplate;
+
     @BeforeEach
     void seedDatabase() {
+        jdbcTemplate.update("DELETE FROM fs_judge_case_result");
         jdbcTemplate.update("DELETE FROM fs_submission");
         jdbcTemplate.update("DELETE FROM fs_code_template");
         jdbcTemplate.update("DELETE FROM fs_problem_testcase");
@@ -43,6 +54,7 @@ class SubmissionControllerIntegrationTests {
         jdbcTemplate.update("DELETE FROM fs_chapter");
         jdbcTemplate.update("DELETE FROM fs_article");
         jdbcTemplate.update("DELETE FROM sys_user");
+        reset(rabbitTemplate);
 
         jdbcTemplate.update("""
                 INSERT INTO fs_article (id, title, status, deleted)
@@ -63,6 +75,14 @@ class SubmissionControllerIntegrationTests {
                      'java,cpp', 1000, 256, 'PUBLISHED', 0, 0, 1, 0),
                     (101, 10, 'Draft Problem', 'hidden', 'EASY', 'input', 'output',
                      'java', 1000, 256, 'DRAFT', 0, 0, 2, 0)
+                """);
+        jdbcTemplate.update("""
+                INSERT INTO fs_problem_testcase (
+                    id, problem_id, input_text, expected_output, is_sample, sort_order, deleted
+                )
+                VALUES
+                    (1, 100, '1 2\\n', '3\\n', 1, 1, 0),
+                    (2, 100, '2 3\\n', '5\\n', 0, 2, 0)
                 """);
     }
 
@@ -101,9 +121,30 @@ class SubmissionControllerIntegrationTests {
                 "SELECT language FROM fs_submission WHERE id = ?", String.class, submitId);
         String storedTraceId = jdbcTemplate.queryForObject(
                 "SELECT trace_id FROM fs_submission WHERE id = ?", String.class, submitId);
-        org.junit.jupiter.api.Assertions.assertEquals("java", storedLanguage);
-        org.junit.jupiter.api.Assertions.assertNotNull(storedTraceId);
-        org.junit.jupiter.api.Assertions.assertFalse(storedTraceId.isBlank());
+        String storedCode = jdbcTemplate.queryForObject(
+                "SELECT code FROM fs_submission WHERE id = ?", String.class, submitId);
+        String storedJudgeCode = jdbcTemplate.queryForObject(
+                "SELECT judge_code FROM fs_submission WHERE id = ?", String.class, submitId);
+        String storedSubmitMode = jdbcTemplate.queryForObject(
+                "SELECT submit_mode FROM fs_submission WHERE id = ?", String.class, submitId);
+        Long submitCount = jdbcTemplate.queryForObject(
+                "SELECT submit_count FROM fs_problem WHERE id = 100", Long.class);
+        Assertions.assertEquals("java", storedLanguage);
+        Assertions.assertEquals("public class Main { public static void main(String[] args) {} }", storedCode);
+        Assertions.assertEquals(storedCode, storedJudgeCode);
+        Assertions.assertEquals("FULL_PROGRAM", storedSubmitMode);
+        Assertions.assertEquals(1L, submitCount);
+        Assertions.assertNotNull(storedTraceId);
+        Assertions.assertFalse(storedTraceId.isBlank());
+        ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+        verify(rabbitTemplate).convertAndSend(eq("submission_queue"), messageCaptor.capture());
+        JsonNode messageJson = objectMapper.readTree(messageCaptor.getValue());
+        Assertions.assertEquals(submitId, messageJson.path("submission_id").asLong());
+        Assertions.assertEquals(100, messageJson.path("problem_id").asLong());
+        Assertions.assertEquals("java", messageJson.path("language").asText());
+        Assertions.assertEquals("FULL_PROGRAM", messageJson.path("submit_mode").asText());
+        Assertions.assertEquals(storedCode, messageJson.path("code").asText());
+        Assertions.assertEquals(2, messageJson.path("testcases").size());
 
         mockMvc.perform(get("/api/v1/submissions/" + submitId)
                         .header("Authorization", "Bearer " + accessToken))
@@ -115,6 +156,62 @@ class SubmissionControllerIntegrationTests {
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.score").value(0))
                 .andExpect(jsonPath("$.data.caseResults", hasSize(0)));
+    }
+
+    @Test
+    void wrapFunctionSubmissionBeforePublishingJudgeTask() throws Exception {
+        String accessToken = registerAndLogin("alice", "alice@example.com");
+        jdbcTemplate.update("""
+                INSERT INTO fs_code_template (problem_id, language, template_code, judge_wrapper_code, deleted)
+                VALUES (?, ?, ?, ?, 0)
+                """,
+                100,
+                "java",
+                "class Solution { int add(int a, int b) { return 0; } }",
+                """
+                import java.util.*;
+
+                {{USER_CODE}}
+
+                public class Main {
+                    public static void main(String[] args) {
+                        Scanner sc = new Scanner(System.in);
+                        int a = sc.nextInt();
+                        int b = sc.nextInt();
+                        System.out.println(new Solution().add(a, b));
+                    }
+                }
+                """);
+
+        String rawCode = "class Solution { int add(int a, int b) { return a + b; } }";
+        String response = mockMvc.perform(post("/api/v1/problems/100/submissions")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"language":"java","code":"%s"}
+                                """.formatted(rawCode)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long submitId = objectMapper.readTree(response).path("data").path("submitId").asLong();
+        String storedCode = jdbcTemplate.queryForObject(
+                "SELECT code FROM fs_submission WHERE id = ?", String.class, submitId);
+        String storedJudgeCode = jdbcTemplate.queryForObject(
+                "SELECT judge_code FROM fs_submission WHERE id = ?", String.class, submitId);
+        String storedSubmitMode = jdbcTemplate.queryForObject(
+                "SELECT submit_mode FROM fs_submission WHERE id = ?", String.class, submitId);
+        Assertions.assertEquals(rawCode, storedCode);
+        Assertions.assertEquals("TEMPLATE_WRAPPED", storedSubmitMode);
+        Assertions.assertTrue(storedJudgeCode.contains(rawCode));
+        Assertions.assertTrue(storedJudgeCode.contains("public class Main"));
+
+        ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+        verify(rabbitTemplate).convertAndSend(eq("submission_queue"), messageCaptor.capture());
+        JsonNode messageJson = objectMapper.readTree(messageCaptor.getValue());
+        Assertions.assertEquals("TEMPLATE_WRAPPED", messageJson.path("submit_mode").asText());
+        Assertions.assertEquals(storedJudgeCode, messageJson.path("code").asText());
     }
 
     @Test
