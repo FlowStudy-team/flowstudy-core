@@ -10,6 +10,8 @@ public class Submission {
     private String problemTitle;
     private String language;
     private String code;
+    private String judgeCode;
+    private String submitMode;
     private String status;
     private Integer score;
     private Integer timeUsedMs;
@@ -66,6 +68,22 @@ public class Submission {
 
     public void setCode(String code) {
         this.code = code;
+    }
+
+    public String getJudgeCode() {
+        return judgeCode;
+    }
+
+    public void setJudgeCode(String judgeCode) {
+        this.judgeCode = judgeCode;
+    }
+
+    public String getSubmitMode() {
+        return submitMode;
+    }
+
+    public void setSubmitMode(String submitMode) {
+        this.submitMode = submitMode;
     }
 
     public String getStatus() {

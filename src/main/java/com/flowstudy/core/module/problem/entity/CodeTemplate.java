@@ -5,6 +5,7 @@ public class CodeTemplate {
     private Long problemId;
     private String language;
     private String templateCode;
+    private String judgeWrapperCode;
 
     public Long getProblemId() {
         return problemId;
@@ -28,5 +29,13 @@ public class CodeTemplate {
 
     public void setTemplateCode(String templateCode) {
         this.templateCode = templateCode;
+    }
+
+    public String getJudgeWrapperCode() {
+        return judgeWrapperCode;
+    }
+
+    public void setJudgeWrapperCode(String judgeWrapperCode) {
+        this.judgeWrapperCode = judgeWrapperCode;
     }
 }

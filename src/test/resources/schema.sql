@@ -1,4 +1,5 @@
 DROP TABLE IF EXISTS fs_code_template;
+DROP TABLE IF EXISTS fs_judge_case_result;
 DROP TABLE IF EXISTS fs_submission;
 DROP TABLE IF EXISTS fs_problem_testcase;
 DROP TABLE IF EXISTS fs_problem;
@@ -89,6 +90,7 @@ CREATE TABLE fs_code_template (
     problem_id BIGINT NOT NULL,
     language VARCHAR(32) NOT NULL,
     template_code CLOB NOT NULL,
+    judge_wrapper_code CLOB,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted TINYINT NOT NULL DEFAULT 0,
@@ -101,6 +103,8 @@ CREATE TABLE fs_submission (
     problem_id BIGINT NOT NULL,
     language VARCHAR(32) NOT NULL,
     code CLOB NOT NULL,
+    judge_code CLOB,
+    submit_mode VARCHAR(32) NOT NULL DEFAULT 'FULL_PROGRAM',
     status VARCHAR(64) NOT NULL DEFAULT 'PENDING',
     score INT NOT NULL DEFAULT 0,
     time_used_ms INT,
@@ -110,4 +114,19 @@ CREATE TABLE fs_submission (
     trace_id VARCHAR(64),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE fs_judge_case_result (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    submission_id BIGINT NOT NULL,
+    testcase_id BIGINT,
+    case_index INT NOT NULL,
+    status VARCHAR(64) NOT NULL,
+    time_used_ms INT,
+    memory_used_kb INT,
+    actual_output CLOB,
+    expected_output CLOB,
+    error_message CLOB,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_fs_judge_case_submission_index UNIQUE (submission_id, case_index)
 );

@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface ProblemMapper {
@@ -98,7 +99,16 @@ public interface ProblemMapper {
     List<ProblemSampleCase> findSampleCases(@Param("problemId") Long problemId);
 
     @Select("""
-            SELECT problem_id, language, template_code
+            SELECT id, problem_id, input_text, expected_output, sort_order
+            FROM fs_problem_testcase
+            WHERE deleted = 0
+              AND problem_id = #{problemId}
+            ORDER BY sort_order ASC, id ASC
+            """)
+    List<ProblemSampleCase> findJudgeCases(@Param("problemId") Long problemId);
+
+    @Select("""
+            SELECT problem_id, language, template_code, judge_wrapper_code
             FROM fs_code_template
             WHERE deleted = 0
               AND problem_id = #{problemId}
@@ -108,4 +118,11 @@ public interface ProblemMapper {
     CodeTemplate findCodeTemplate(
             @Param("problemId") Long problemId,
             @Param("language") String language);
+
+    @Update("""
+            UPDATE fs_problem
+            SET submit_count = submit_count + 1
+            WHERE id = #{problemId}
+            """)
+    int incrementSubmitCount(@Param("problemId") Long problemId);
 }

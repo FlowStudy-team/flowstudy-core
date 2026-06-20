@@ -3,12 +3,20 @@ package com.flowstudy.core.module.submission.service;
 import com.flowstudy.core.common.exception.BusinessException;
 import com.flowstudy.core.common.result.PageResponse;
 import com.flowstudy.core.common.trace.TraceContext;
+import com.flowstudy.core.module.problem.entity.CodeTemplate;
 import com.flowstudy.core.module.problem.entity.Problem;
+import com.flowstudy.core.module.problem.entity.ProblemSampleCase;
 import com.flowstudy.core.module.problem.service.ProblemService;
 import com.flowstudy.core.module.submission.dto.CreateSubmissionRequest;
 import com.flowstudy.core.module.submission.entity.Submission;
+import com.flowstudy.core.module.submission.judge.JudgeSubmitMessage;
+import com.flowstudy.core.module.submission.judge.JudgeTaskPublisher;
+import com.flowstudy.core.module.submission.judge.PackagedSubmissionCode;
+import com.flowstudy.core.module.submission.judge.SubmissionCodePackager;
+import com.flowstudy.core.module.submission.mapper.JudgeCaseResultMapper;
 import com.flowstudy.core.module.submission.mapper.SubmissionMapper;
 import com.flowstudy.core.module.submission.vo.CreateSubmissionResponse;
+import com.flowstudy.core.module.submission.vo.JudgeCaseResultResponse;
 import com.flowstudy.core.module.submission.vo.SubmissionDetailResponse;
 import com.flowstudy.core.module.submission.vo.SubmissionSummaryResponse;
 import java.util.Arrays;
@@ -25,11 +33,22 @@ public class SubmissionService {
     private static final String PENDING_STATUS = "PENDING";
 
     private final SubmissionMapper submissionMapper;
+    private final JudgeCaseResultMapper judgeCaseResultMapper;
     private final ProblemService problemService;
+    private final JudgeTaskPublisher judgeTaskPublisher;
+    private final SubmissionCodePackager submissionCodePackager;
 
-    public SubmissionService(SubmissionMapper submissionMapper, ProblemService problemService) {
+    public SubmissionService(
+            SubmissionMapper submissionMapper,
+            JudgeCaseResultMapper judgeCaseResultMapper,
+            ProblemService problemService,
+            JudgeTaskPublisher judgeTaskPublisher,
+            SubmissionCodePackager submissionCodePackager) {
         this.submissionMapper = submissionMapper;
+        this.judgeCaseResultMapper = judgeCaseResultMapper;
         this.problemService = problemService;
+        this.judgeTaskPublisher = judgeTaskPublisher;
+        this.submissionCodePackager = submissionCodePackager;
     }
 
     @Transactional
@@ -38,22 +57,43 @@ public class SubmissionService {
         Problem problem = problemService.ensurePublishedProblemExists(problemId);
         String language = normalizeLanguage(request.language());
         ensureLanguageSupported(problem, language);
+        List<ProblemSampleCase> judgeCases = problemService.getJudgeCases(problemId);
+        if (judgeCases.isEmpty()) {
+            throw new BusinessException(42007, "problem testcases do not exist", HttpStatus.NOT_FOUND);
+        }
+        CodeTemplate template = problemService.findCodeTemplateForJudge(problemId, language);
+        PackagedSubmissionCode packagedCode = submissionCodePackager.packageCode(request.code(), template);
 
         Submission submission = new Submission();
         submission.setUserId(userId);
         submission.setProblemId(problemId);
         submission.setLanguage(language);
         submission.setCode(request.code());
+        submission.setJudgeCode(packagedCode.judgeCode());
+        submission.setSubmitMode(packagedCode.submitMode());
         submission.setStatus(PENDING_STATUS);
         submission.setScore(0);
         submission.setTraceId(TraceContext.getTraceId());
         submissionMapper.insert(submission);
+        judgeTaskPublisher.publish(JudgeSubmitMessage.from(
+                submission.getId(),
+                userId,
+                problem,
+                language,
+                packagedCode.submitMode(),
+                packagedCode.judgeCode(),
+                judgeCases));
+        problemService.incrementSubmitCount(problemId);
         return new CreateSubmissionResponse(submission.getId(), submission.getStatus());
     }
 
     public SubmissionDetailResponse getSubmissionDetail(Long userId, Long submitId) {
         Submission submission = findOwnSubmissionOrThrow(userId, submitId);
-        return SubmissionDetailResponse.from(submission, List.of());
+        List<JudgeCaseResultResponse> caseResults = judgeCaseResultMapper.findBySubmissionId(submission.getId())
+                .stream()
+                .map(JudgeCaseResultResponse::from)
+                .toList();
+        return SubmissionDetailResponse.from(submission, caseResults);
     }
 
     public PageResponse<SubmissionSummaryResponse> getMySubmissions(

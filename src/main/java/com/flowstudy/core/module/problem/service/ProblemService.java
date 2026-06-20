@@ -4,6 +4,7 @@ import com.flowstudy.core.common.exception.BusinessException;
 import com.flowstudy.core.common.result.PageResponse;
 import com.flowstudy.core.module.problem.entity.CodeTemplate;
 import com.flowstudy.core.module.problem.entity.Problem;
+import com.flowstudy.core.module.problem.entity.ProblemSampleCase;
 import com.flowstudy.core.module.problem.mapper.ProblemMapper;
 import com.flowstudy.core.module.problem.vo.ProblemDetailResponse;
 import com.flowstudy.core.module.problem.vo.ProblemSampleCaseResponse;
@@ -60,6 +61,11 @@ public class ProblemService {
         return findPublishedProblemOrThrow(problemId);
     }
 
+    public List<ProblemSampleCase> getJudgeCases(Long problemId) {
+        findPublishedProblemOrThrow(problemId);
+        return problemMapper.findJudgeCases(problemId);
+    }
+
     public ProblemTemplateResponse getCodeTemplate(Long problemId, String language) {
         findPublishedProblemOrThrow(problemId);
         String normalizedLanguage = normalizeLanguage(language);
@@ -68,6 +74,14 @@ public class ProblemService {
             throw new BusinessException(42006, "code template does not exist", HttpStatus.NOT_FOUND);
         }
         return ProblemTemplateResponse.from(template);
+    }
+
+    public CodeTemplate findCodeTemplateForJudge(Long problemId, String language) {
+        return problemMapper.findCodeTemplate(problemId, normalizeLanguage(language));
+    }
+
+    public void incrementSubmitCount(Long problemId) {
+        problemMapper.incrementSubmitCount(problemId);
     }
 
     private Problem findPublishedProblemOrThrow(Long problemId) {
