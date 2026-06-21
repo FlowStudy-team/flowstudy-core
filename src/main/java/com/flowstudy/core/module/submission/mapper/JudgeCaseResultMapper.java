@@ -18,13 +18,16 @@ public interface JudgeCaseResultMapper {
                 status,
                 time_used_ms,
                 memory_used_kb,
+                input_text,
                 actual_output,
                 expected_output,
                 error_message,
                 created_at
             FROM fs_judge_case_result
             WHERE submission_id = #{submissionId}
+              AND status <> 'ACCEPTED'
             ORDER BY case_index ASC, id ASC
+            LIMIT 1
             """)
     List<JudgeCaseResult> findBySubmissionId(@Param("submissionId") Long submissionId);
 }
