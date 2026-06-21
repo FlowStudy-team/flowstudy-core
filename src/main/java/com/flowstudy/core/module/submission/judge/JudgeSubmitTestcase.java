@@ -2,6 +2,7 @@ package com.flowstudy.core.module.submission.judge;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.flowstudy.core.module.problem.entity.ProblemSampleCase;
+import com.flowstudy.core.module.submission.dto.CreateCodeRunRequest;
 
 public record JudgeSubmitTestcase(
         @JsonProperty("testcase_id") Long testcaseId,
@@ -15,5 +16,15 @@ public record JudgeSubmitTestcase(
                 testcase.getSortOrder(),
                 testcase.getInputText(),
                 testcase.getExpectedOutput());
+    }
+
+    public static JudgeSubmitTestcase fromRunCase(
+            CreateCodeRunRequest.RunTestCaseRequest testcase,
+            int caseIndex) {
+        return new JudgeSubmitTestcase(
+                null,
+                caseIndex,
+                testcase.input(),
+                testcase.expectedOutput());
     }
 }

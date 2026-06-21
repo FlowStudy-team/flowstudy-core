@@ -66,6 +66,11 @@ public class ProblemService {
         return problemMapper.findJudgeCases(problemId);
     }
 
+    public List<ProblemSampleCase> getSampleCases(Long problemId) {
+        findPublishedProblemOrThrow(problemId);
+        return problemMapper.findSampleCases(problemId);
+    }
+
     public ProblemTemplateResponse getCodeTemplate(Long problemId, String language) {
         findPublishedProblemOrThrow(problemId);
         String normalizedLanguage = normalizeLanguage(language);

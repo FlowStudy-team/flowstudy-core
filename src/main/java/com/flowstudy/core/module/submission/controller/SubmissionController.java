@@ -2,8 +2,12 @@ package com.flowstudy.core.module.submission.controller;
 
 import com.flowstudy.core.common.result.PageResponse;
 import com.flowstudy.core.common.result.Result;
+import com.flowstudy.core.module.submission.dto.CreateCodeRunRequest;
 import com.flowstudy.core.module.submission.dto.CreateSubmissionRequest;
+import com.flowstudy.core.module.submission.service.CodeRunService;
 import com.flowstudy.core.module.submission.service.SubmissionService;
+import com.flowstudy.core.module.submission.vo.CodeRunDetailResponse;
+import com.flowstudy.core.module.submission.vo.CreateCodeRunResponse;
 import com.flowstudy.core.module.submission.vo.CreateSubmissionResponse;
 import com.flowstudy.core.module.submission.vo.SubmissionDetailResponse;
 import com.flowstudy.core.module.submission.vo.SubmissionSummaryResponse;
@@ -23,9 +27,26 @@ import org.springframework.web.bind.annotation.RestController;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
+    private final CodeRunService codeRunService;
 
-    public SubmissionController(SubmissionService submissionService) {
+    public SubmissionController(SubmissionService submissionService, CodeRunService codeRunService) {
         this.submissionService = submissionService;
+        this.codeRunService = codeRunService;
+    }
+
+    @PostMapping("/problems/{problemId}/runs")
+    public Result<CreateCodeRunResponse> createRun(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable Long problemId,
+            @Valid @RequestBody CreateCodeRunRequest request) {
+        return Result.success(codeRunService.createRun(user.id(), problemId, request));
+    }
+
+    @GetMapping("/runs/{runId}")
+    public Result<CodeRunDetailResponse> getRunDetail(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable Long runId) {
+        return Result.success(codeRunService.getRunDetail(user.id(), runId));
     }
 
     @PostMapping("/problems/{problemId}/submissions")

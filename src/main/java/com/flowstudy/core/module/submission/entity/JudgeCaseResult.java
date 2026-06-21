@@ -11,6 +11,7 @@ public class JudgeCaseResult {
     private String status;
     private Integer timeUsedMs;
     private Integer memoryUsedKb;
+    private String inputText;
     private String actualOutput;
     private String expectedOutput;
     private String errorMessage;
@@ -70,6 +71,14 @@ public class JudgeCaseResult {
 
     public void setMemoryUsedKb(Integer memoryUsedKb) {
         this.memoryUsedKb = memoryUsedKb;
+    }
+
+    public String getInputText() {
+        return inputText;
+    }
+
+    public void setInputText(String inputText) {
+        this.inputText = inputText;
     }
 
     public String getActualOutput() {

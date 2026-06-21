@@ -7,6 +7,7 @@ public record JudgeCaseResultResponse(
         String status,
         Integer timeUsedMs,
         Integer memoryUsedKb,
+        String input,
         String expectedOutput,
         String actualOutput,
         String errorMessage) {
@@ -17,6 +18,7 @@ public record JudgeCaseResultResponse(
                 result.getStatus(),
                 result.getTimeUsedMs(),
                 result.getMemoryUsedKb(),
+                result.getInputText(),
                 result.getExpectedOutput(),
                 result.getActualOutput(),
                 result.getErrorMessage());

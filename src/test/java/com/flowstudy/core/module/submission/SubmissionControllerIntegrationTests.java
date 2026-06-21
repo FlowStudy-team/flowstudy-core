@@ -47,6 +47,8 @@ class SubmissionControllerIntegrationTests {
     @BeforeEach
     void seedDatabase() {
         jdbcTemplate.update("DELETE FROM fs_judge_case_result");
+        jdbcTemplate.update("DELETE FROM fs_code_run_case_result");
+        jdbcTemplate.update("DELETE FROM fs_code_run");
         jdbcTemplate.update("DELETE FROM fs_submission");
         jdbcTemplate.update("DELETE FROM fs_code_template");
         jdbcTemplate.update("DELETE FROM fs_problem_testcase");
@@ -155,6 +157,103 @@ class SubmissionControllerIntegrationTests {
                 .andExpect(jsonPath("$.data.language").value("java"))
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.score").value(0))
+                .andExpect(jsonPath("$.data.caseResults", hasSize(0)));
+    }
+
+    @Test
+    void readSubmissionDetailReturnsOnlyFailedCaseWithInput() throws Exception {
+        String accessToken = registerAndLogin("alice", "alice@example.com");
+        long submitId = createSubmission(accessToken, 100, "java");
+        jdbcTemplate.update("""
+                UPDATE fs_submission
+                SET status = 'WRONG_ANSWER', time_used_ms = 11, memory_used_kb = 256
+                WHERE id = ?
+                """, submitId);
+        jdbcTemplate.update("""
+                INSERT INTO fs_judge_case_result (
+                    submission_id, testcase_id, case_index, status, time_used_ms, memory_used_kb,
+                    input_text, actual_output, expected_output, error_message
+                )
+                VALUES (?, 1, 1, 'ACCEPTED', 3, 128, ?, ?, ?, NULL)
+                """, submitId, "1 2\n", "3\n", "3\n");
+        jdbcTemplate.update("""
+                INSERT INTO fs_judge_case_result (
+                    submission_id, testcase_id, case_index, status, time_used_ms, memory_used_kb,
+                    input_text, actual_output, expected_output, error_message
+                )
+                VALUES (?, 2, 2, 'WRONG_ANSWER', 8, 256, ?, ?, ?, 'Wrong answer on testcase 2')
+                """, submitId, "2 3\n", "4\n", "5\n");
+
+        mockMvc.perform(get("/api/v1/submissions/" + submitId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("WRONG_ANSWER"))
+                .andExpect(jsonPath("$.data.caseResults", hasSize(1)))
+                .andExpect(jsonPath("$.data.caseResults[0].caseIndex").value(2))
+                .andExpect(jsonPath("$.data.caseResults[0].status").value("WRONG_ANSWER"))
+                .andExpect(jsonPath("$.data.caseResults[0].input").value("2 3\n"))
+                .andExpect(jsonPath("$.data.caseResults[0].expectedOutput").value("5\n"))
+                .andExpect(jsonPath("$.data.caseResults[0].actualOutput").value("4\n"))
+                .andExpect(jsonPath("$.data.caseResults[0].errorMessage").value("Wrong answer on testcase 2"));
+    }
+
+    @Test
+    void createCodeRunUsesRequestCasesAndDoesNotCreateSubmission() throws Exception {
+        String accessToken = registerAndLogin("alice", "alice@example.com");
+
+        String response = mockMvc.perform(post("/api/v1/problems/100/runs")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "language":"Java",
+                                  "code":"public class Main { public static void main(String[] args) {} }",
+                                  "testCases":[
+                                    {"input":"1 2\\n","expectedOutput":"3\\n"},
+                                    {"input":"5 7\\n","expectedOutput":"12\\n"}
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.runId").isNumber())
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long runId = objectMapper.readTree(response).path("data").path("runId").asLong();
+        Long submissionCount = jdbcTemplate.queryForObject("SELECT COUNT(1) FROM fs_submission", Long.class);
+        Long submitCount = jdbcTemplate.queryForObject(
+                "SELECT submit_count FROM fs_problem WHERE id = 100", Long.class);
+        String storedMode = jdbcTemplate.queryForObject(
+                "SELECT submit_mode FROM fs_code_run WHERE id = ?", String.class, runId);
+        Assertions.assertEquals(0L, submissionCount);
+        Assertions.assertEquals(0L, submitCount);
+        Assertions.assertEquals("FULL_PROGRAM", storedMode);
+
+        ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+        verify(rabbitTemplate).convertAndSend(eq("submission_queue"), messageCaptor.capture());
+        JsonNode messageJson = objectMapper.readTree(messageCaptor.getValue());
+        Assertions.assertEquals("RUN", messageJson.path("task_type").asText());
+        Assertions.assertEquals(runId, messageJson.path("run_id").asLong());
+        Assertions.assertTrue(messageJson.path("submission_id").isNull());
+        Assertions.assertEquals("java", messageJson.path("language").asText());
+        Assertions.assertEquals(2, messageJson.path("testcases").size());
+        Assertions.assertTrue(messageJson.path("testcases").get(0).path("testcase_id").isNull());
+        Assertions.assertEquals(1, messageJson.path("testcases").get(0).path("case_index").asInt());
+        Assertions.assertEquals("1 2\n", messageJson.path("testcases").get(0).path("input").asText());
+        Assertions.assertEquals("3\n", messageJson.path("testcases").get(0).path("expected_output").asText());
+        Assertions.assertEquals(2, messageJson.path("testcases").get(1).path("case_index").asInt());
+        Assertions.assertEquals("5 7\n", messageJson.path("testcases").get(1).path("input").asText());
+        Assertions.assertEquals("12\n", messageJson.path("testcases").get(1).path("expected_output").asText());
+
+        mockMvc.perform(get("/api/v1/runs/" + runId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.runId").value(runId))
+                .andExpect(jsonPath("$.data.problemId").value(100))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.caseResults", hasSize(0)));
     }
 
