@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public class Problem {
 
     private Long id;
-    private Long chapterId;
+    private Long blogId;
     private String title;
     private String descriptionMd;
     private String difficulty;
@@ -29,12 +29,12 @@ public class Problem {
         this.id = id;
     }
 
-    public Long getChapterId() {
-        return chapterId;
+    public Long getBlogId() {
+        return blogId;
     }
 
-    public void setChapterId(Long chapterId) {
-        this.chapterId = chapterId;
+    public void setBlogId(Long blogId) {
+        this.blogId = blogId;
     }
 
     public String getTitle() {

@@ -4,7 +4,7 @@ import com.flowstudy.core.module.problem.entity.Problem;
 
 public record ProblemSummaryResponse(
         Long id,
-        Long chapterId,
+        Long blogId,
         String title,
         String difficulty,
         Long acceptedCount,
@@ -13,7 +13,7 @@ public record ProblemSummaryResponse(
     public static ProblemSummaryResponse from(Problem problem) {
         return new ProblemSummaryResponse(
                 problem.getId(),
-                problem.getChapterId(),
+                problem.getBlogId(),
                 problem.getTitle(),
                 problem.getDifficulty(),
                 problem.getAcceptedCount(),

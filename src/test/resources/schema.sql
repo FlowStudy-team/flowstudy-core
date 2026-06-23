@@ -5,8 +5,8 @@ DROP TABLE IF EXISTS fs_judge_case_result;
 DROP TABLE IF EXISTS fs_submission;
 DROP TABLE IF EXISTS fs_problem_testcase;
 DROP TABLE IF EXISTS fs_problem;
-DROP TABLE IF EXISTS fs_chapter;
-DROP TABLE IF EXISTS fs_article;
+DROP TABLE IF EXISTS fs_blog;
+DROP TABLE IF EXISTS fs_tutorial;
 DROP TABLE IF EXISTS sys_user;
 
 CREATE TABLE sys_user (
@@ -26,7 +26,7 @@ CREATE TABLE sys_user (
     CONSTRAINT uk_sys_user_email UNIQUE (email)
 );
 
-CREATE TABLE fs_article (
+CREATE TABLE fs_tutorial (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     summary VARCHAR(512),
@@ -42,14 +42,20 @@ CREATE TABLE fs_article (
     deleted TINYINT NOT NULL DEFAULT 0
 );
 
-CREATE TABLE fs_chapter (
+CREATE TABLE fs_blog (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    article_id BIGINT NOT NULL,
+    tutorial_id BIGINT,
     title VARCHAR(255) NOT NULL,
     content_md CLOB NOT NULL,
+    summary VARCHAR(512),
+    cover_url VARCHAR(512),
+    author_id BIGINT,
     sort_order INT NOT NULL DEFAULT 0,
     estimated_minutes INT,
     status VARCHAR(32) NOT NULL DEFAULT 'PUBLISHED',
+    view_count BIGINT NOT NULL DEFAULT 0,
+    like_count BIGINT NOT NULL DEFAULT 0,
+    published_at TIMESTAMP NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted TINYINT NOT NULL DEFAULT 0
@@ -57,7 +63,7 @@ CREATE TABLE fs_chapter (
 
 CREATE TABLE fs_problem (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    chapter_id BIGINT NOT NULL,
+    blog_id BIGINT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description_md CLOB NOT NULL,
     difficulty VARCHAR(32) NOT NULL DEFAULT 'EASY',

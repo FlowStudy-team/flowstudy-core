@@ -27,7 +27,7 @@ public class ProblemService {
     }
 
     public PageResponse<ProblemSummaryResponse> getPublishedProblems(
-            Long chapterId,
+            Long blogId,
             String difficulty,
             String keyword,
             Integer page,
@@ -36,9 +36,9 @@ public class ProblemService {
         int safeSize = size == null || size < 1 ? 10 : Math.min(size, MAX_PAGE_SIZE);
         String normalizedDifficulty = normalizeDifficulty(difficulty);
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        long total = problemMapper.countPublished(chapterId, normalizedDifficulty, normalizedKeyword);
+        long total = problemMapper.countPublished(blogId, normalizedDifficulty, normalizedKeyword);
         List<ProblemSummaryResponse> records = problemMapper.findPublishedPage(
-                        chapterId,
+                        blogId,
                         normalizedDifficulty,
                         normalizedKeyword,
                         safeSize,

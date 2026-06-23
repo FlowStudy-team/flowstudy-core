@@ -53,22 +53,22 @@ class SubmissionControllerIntegrationTests {
         jdbcTemplate.update("DELETE FROM fs_code_template");
         jdbcTemplate.update("DELETE FROM fs_problem_testcase");
         jdbcTemplate.update("DELETE FROM fs_problem");
-        jdbcTemplate.update("DELETE FROM fs_chapter");
-        jdbcTemplate.update("DELETE FROM fs_article");
+        jdbcTemplate.update("DELETE FROM fs_blog");
+        jdbcTemplate.update("DELETE FROM fs_tutorial");
         jdbcTemplate.update("DELETE FROM sys_user");
         reset(rabbitTemplate);
 
         jdbcTemplate.update("""
-                INSERT INTO fs_article (id, title, status, deleted)
+                INSERT INTO fs_tutorial (id, title, status, deleted)
                 VALUES (1, 'Java Basics', 'PUBLISHED', 0)
                 """);
         jdbcTemplate.update("""
-                INSERT INTO fs_chapter (id, article_id, title, content_md, sort_order, status, deleted)
-                VALUES (10, 1, 'Arrays', 'chapter', 1, 'PUBLISHED', 0)
+                INSERT INTO fs_blog (id, tutorial_id, title, content_md, sort_order, status, deleted)
+                VALUES (10, 1, 'Arrays', 'Blog', 1, 'PUBLISHED', 0)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO fs_problem (
-                    id, chapter_id, title, description_md, difficulty, input_description, output_description,
+                    id, blog_id, title, description_md, difficulty, input_description, output_description,
                     support_languages, time_limit_ms, memory_limit_mb, status, submit_count,
                     accepted_count, sort_order, deleted
                 )

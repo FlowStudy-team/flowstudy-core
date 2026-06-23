@@ -6,7 +6,7 @@ import java.util.List;
 
 public record ProblemDetailResponse(
         Long id,
-        Long chapterId,
+        Long blogId,
         String title,
         String descriptionMd,
         String difficulty,
@@ -22,7 +22,7 @@ public record ProblemDetailResponse(
     public static ProblemDetailResponse from(Problem problem, List<ProblemSampleCaseResponse> sampleCases) {
         return new ProblemDetailResponse(
                 problem.getId(),
-                problem.getChapterId(),
+                problem.getBlogId(),
                 problem.getTitle(),
                 problem.getDescriptionMd(),
                 problem.getDifficulty(),

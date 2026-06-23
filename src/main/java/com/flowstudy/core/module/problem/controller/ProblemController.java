@@ -24,14 +24,14 @@ public class ProblemController {
 
     @GetMapping
     public Result<PageResponse<ProblemSummaryResponse>> listProblems(
-            @RequestParam(required = false) Long chapterId,
+            @RequestParam(required = false) Long blogId,
             @RequestParam(required = false) String difficulty,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) Integer pageSize) {
         return Result.success(problemService.getPublishedProblems(
-                chapterId,
+                blogId,
                 difficulty,
                 keyword,
                 page,
