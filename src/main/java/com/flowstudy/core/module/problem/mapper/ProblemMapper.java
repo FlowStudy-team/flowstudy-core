@@ -17,20 +17,20 @@ public interface ProblemMapper {
             FROM fs_problem p
             WHERE p.deleted = 0
               AND p.status = 'PUBLISHED'
-              AND (#{chapterId} IS NULL OR p.chapter_id = #{chapterId})
+              AND (#{blogId} IS NULL OR p.blog_id = #{blogId})
               AND (#{difficulty} IS NULL OR p.difficulty = #{difficulty})
               AND (#{keyword} IS NULL OR p.title LIKE CONCAT('%', #{keyword}, '%')
                    OR p.description_md LIKE CONCAT('%', #{keyword}, '%'))
             """)
     long countPublished(
-            @Param("chapterId") Long chapterId,
+            @Param("blogId") Long blogId,
             @Param("difficulty") String difficulty,
             @Param("keyword") String keyword);
 
     @Select("""
             SELECT
                 id,
-                chapter_id,
+                blog_id,
                 title,
                 description_md,
                 difficulty,
@@ -48,7 +48,7 @@ public interface ProblemMapper {
             FROM fs_problem p
             WHERE p.deleted = 0
               AND p.status = 'PUBLISHED'
-              AND (#{chapterId} IS NULL OR p.chapter_id = #{chapterId})
+              AND (#{blogId} IS NULL OR p.blog_id = #{blogId})
               AND (#{difficulty} IS NULL OR p.difficulty = #{difficulty})
               AND (#{keyword} IS NULL OR p.title LIKE CONCAT('%', #{keyword}, '%')
                    OR p.description_md LIKE CONCAT('%', #{keyword}, '%'))
@@ -56,7 +56,7 @@ public interface ProblemMapper {
             LIMIT #{limit} OFFSET #{offset}
             """)
     List<Problem> findPublishedPage(
-            @Param("chapterId") Long chapterId,
+            @Param("blogId") Long blogId,
             @Param("difficulty") String difficulty,
             @Param("keyword") String keyword,
             @Param("limit") int limit,
@@ -65,7 +65,7 @@ public interface ProblemMapper {
     @Select("""
             SELECT
                 id,
-                chapter_id,
+                blog_id,
                 title,
                 description_md,
                 difficulty,

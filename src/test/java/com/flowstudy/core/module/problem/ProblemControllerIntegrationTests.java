@@ -32,21 +32,21 @@ class ProblemControllerIntegrationTests {
         jdbcTemplate.update("DELETE FROM fs_code_template");
         jdbcTemplate.update("DELETE FROM fs_problem_testcase");
         jdbcTemplate.update("DELETE FROM fs_problem");
-        jdbcTemplate.update("DELETE FROM fs_chapter");
-        jdbcTemplate.update("DELETE FROM fs_article");
+        jdbcTemplate.update("DELETE FROM fs_blog");
+        jdbcTemplate.update("DELETE FROM fs_tutorial");
         jdbcTemplate.update("DELETE FROM sys_user");
 
         jdbcTemplate.update("""
-                INSERT INTO fs_article (id, title, status, deleted)
+                INSERT INTO fs_tutorial (id, title, status, deleted)
                 VALUES (1, 'Java 并发', 'PUBLISHED', 0)
                 """);
         jdbcTemplate.update("""
-                INSERT INTO fs_chapter (id, article_id, title, content_md, sort_order, status, deleted)
-                VALUES (10, 1, '线程池', 'chapter', 1, 'PUBLISHED', 0)
+                INSERT INTO fs_blog (id, tutorial_id, title, content_md, sort_order, status, deleted)
+                VALUES (10, 1, '线程池', 'Blog', 1, 'PUBLISHED', 0)
                 """);
         jdbcTemplate.update("""
                 INSERT INTO fs_problem (
-                    id, chapter_id, title, description_md, difficulty, input_description, output_description,
+                    id, blog_id, title, description_md, difficulty, input_description, output_description,
                     support_languages, time_limit_ms, memory_limit_mb, status, submit_count,
                     accepted_count, sort_order, deleted
                 )
@@ -90,13 +90,13 @@ class ProblemControllerIntegrationTests {
 
     @Test
     void listPublishedProblemsWithFiltersWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/api/v1/problems?chapterId=10&difficulty=easy&keyword=两数&page=1&size=10"))
+        mockMvc.perform(get("/api/v1/problems?blogId=10&difficulty=easy&keyword=两数&page=1&size=10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.records", hasSize(1)))
                 .andExpect(jsonPath("$.data.records[0].id").value(100))
-                .andExpect(jsonPath("$.data.records[0].chapterId").value(10))
+                .andExpect(jsonPath("$.data.records[0].blogId").value(10))
                 .andExpect(jsonPath("$.data.records[0].difficulty").value("EASY"))
                 .andExpect(jsonPath("$.data.records[0].acceptedCount").value(100))
                 .andExpect(jsonPath("$.data.records[0].submitCount").value(180))
