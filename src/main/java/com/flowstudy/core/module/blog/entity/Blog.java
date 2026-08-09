@@ -16,6 +16,10 @@ public class Blog {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer problemCount;
+    private String authorName;
+    private java.time.LocalDateTime publishedAt;
+    private Long viewCount;
+    private Long likeCount;
 
     public Long getId() {
         return id;
@@ -111,5 +115,37 @@ public class Blog {
 
     public void setProblemCount(Integer problemCount) {
         this.problemCount = problemCount;
+    }
+
+    public String getAuthorName() {
+        return authorName;
+    }
+
+    public void setAuthorName(String authorName) {
+        this.authorName = authorName;
+    }
+
+    public java.time.LocalDateTime getPublishedAt() {
+        return publishedAt;
+    }
+
+    public void setPublishedAt(java.time.LocalDateTime publishedAt) {
+        this.publishedAt = publishedAt;
+    }
+
+    public Long getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(Long viewCount) {
+        this.viewCount = viewCount;
+    }
+
+    public Long getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(Long likeCount) {
+        this.likeCount = likeCount;
     }
 }

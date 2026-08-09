@@ -14,23 +14,32 @@ public interface BlogMapper {
             SELECT
                 b.id,
                 b.tutorial_id,
+                b.author_id,
+                COALESCE(u.nickname, u.username) AS author_name,
                 b.title,
+                b.summary,
                 b.content_md,
                 b.sort_order,
                 b.estimated_minutes,
                 b.status,
+                b.view_count,
+                b.like_count,
+                b.published_at,
                 b.created_at,
                 b.updated_at,
                 COUNT(p.id) AS problem_count
             FROM fs_blog b
+            LEFT JOIN sys_user u ON u.id = b.author_id
             LEFT JOIN fs_problem p ON p.blog_id = b.id
                 AND p.deleted = 0
                 AND p.status = 'PUBLISHED'
             WHERE b.deleted = 0
               AND b.status = 'PUBLISHED'
               AND b.tutorial_id = #{tutorialId}
-            GROUP BY b.id, b.tutorial_id, b.title, b.content_md, b.sort_order, b.estimated_minutes,
-                     b.status, b.created_at, b.updated_at
+            GROUP BY b.id, b.tutorial_id, b.author_id, u.nickname, u.username,
+                     b.title, b.summary, b.content_md, b.sort_order, b.estimated_minutes,
+                     b.status, b.view_count, b.like_count, b.published_at,
+                     b.created_at, b.updated_at
             ORDER BY b.sort_order ASC, b.id ASC
             """)
     List<Blog> findPublishedByTutorialId(@Param("tutorialId") Long tutorialId);
@@ -38,6 +47,7 @@ public interface BlogMapper {
     @Select("""
             SELECT COUNT(1)
             FROM fs_blog b
+            LEFT JOIN sys_user u ON u.id = b.author_id
             WHERE b.deleted = 0
               AND b.status = 'PUBLISHED'
               AND (#{tutorialId} IS NULL OR b.tutorial_id = #{tutorialId})
@@ -55,15 +65,22 @@ public interface BlogMapper {
             SELECT
                 b.id,
                 b.tutorial_id,
+                b.author_id,
+                COALESCE(u.nickname, u.username) AS author_name,
                 b.title,
+                b.summary,
                 b.content_md,
                 b.sort_order,
                 b.estimated_minutes,
                 b.status,
+                b.view_count,
+                b.like_count,
+                b.published_at,
                 b.created_at,
                 b.updated_at,
                 COUNT(p.id) AS problem_count
             FROM fs_blog b
+            LEFT JOIN sys_user u ON u.id = b.author_id
             LEFT JOIN fs_problem p ON p.blog_id = b.id
                 AND p.deleted = 0
                 AND p.status = 'PUBLISHED'
@@ -74,8 +91,10 @@ public interface BlogMapper {
               AND (#{keyword} IS NULL OR b.title LIKE CONCAT('%', #{keyword}, '%')
                    OR b.summary LIKE CONCAT('%', #{keyword}, '%')
                    OR b.content_md LIKE CONCAT('%', #{keyword}, '%'))
-            GROUP BY b.id, b.tutorial_id, b.title, b.content_md, b.sort_order, b.estimated_minutes,
-                     b.status, b.created_at, b.updated_at
+            GROUP BY b.id, b.tutorial_id, b.author_id, u.nickname, u.username,
+                     b.title, b.summary, b.content_md, b.sort_order, b.estimated_minutes,
+                     b.status, b.view_count, b.like_count, b.published_at,
+                     b.created_at, b.updated_at
             ORDER BY b.sort_order ASC, b.published_at DESC, b.created_at DESC, b.id ASC
             LIMIT #{limit} OFFSET #{offset}
             """)
@@ -88,19 +107,23 @@ public interface BlogMapper {
 
     @Select("""
             SELECT
-                id,
-                tutorial_id,
-                title,
-                content_md,
-                sort_order,
-                estimated_minutes,
-                status,
-                created_at,
-                updated_at
-            FROM fs_blog
-            WHERE deleted = 0
-              AND status = 'PUBLISHED'
-              AND id = #{id}
+                b.id,
+                b.tutorial_id,
+                b.author_id,
+                COALESCE(u.nickname, u.username) AS author_name,
+                b.title,
+                b.content_md,
+                b.sort_order,
+                b.estimated_minutes,
+                b.status,
+                b.created_at,
+                b.updated_at,
+                b.published_at
+            FROM fs_blog b
+            LEFT JOIN sys_user u ON u.id = b.author_id
+            WHERE b.deleted = 0
+              AND b.status = 'PUBLISHED'
+              AND b.id = #{id}
             LIMIT 1
             """)
     Blog findPublishedById(@Param("id") Long id);
