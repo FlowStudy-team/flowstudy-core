@@ -14,7 +14,12 @@ public record BlogDetailResponse(
         List<ProblemSummaryResponse> problems,
         List<String> problemIds,
         Long prevBlogId,
-        Long nextBlogId) {
+        Long nextBlogId,
+        Long authorId,
+        String authorName,
+        String createdAt,
+        String updatedAt,
+        String publishedAt) {
 
     public static BlogDetailResponse from(
             Blog blog,
@@ -32,6 +37,11 @@ public record BlogDetailResponse(
                 problems,
                 problems.stream().map(problem -> String.valueOf(problem.id())).toList(),
                 prevBlogId,
-                nextBlogId);
+                nextBlogId,
+                blog.getAuthorId(),
+                blog.getAuthorName(),
+                blog.getCreatedAt() != null ? blog.getCreatedAt().toString() : null,
+                blog.getUpdatedAt() != null ? blog.getUpdatedAt().toString() : null,
+                blog.getPublishedAt() != null ? blog.getPublishedAt().toString() : null);
     }
 }
