@@ -5,9 +5,14 @@ import com.flowstudy.core.module.problem.entity.Problem;
 import com.flowstudy.core.module.problem.entity.ProblemSampleCase;
 import com.flowstudy.core.module.submission.dto.CreateCodeRunRequest;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 public record JudgeSubmitMessage(
+        @JsonProperty("message_id") String messageId,
+        @JsonProperty("trace_id") String traceId,
+        @JsonProperty("schema_version") Integer schemaVersion,
+        @JsonProperty("event_type") String eventType,
         @JsonProperty("task_type") String taskType,
         @JsonProperty("run_id") Long runId,
         @JsonProperty("submission_id") Long submissionId,
@@ -32,6 +37,10 @@ public record JudgeSubmitMessage(
             String code,
             List<ProblemSampleCase> testcases) {
         return new JudgeSubmitMessage(
+                UUID.randomUUID().toString(),
+                com.flowstudy.core.common.trace.TraceContext.getTraceId(),
+                1,
+                "JUDGE_SUBMISSION_CREATED",
                 SUBMISSION_TASK,
                 null,
                 submissionId,
@@ -56,6 +65,10 @@ public record JudgeSubmitMessage(
             String code,
             List<CreateCodeRunRequest.RunTestCaseRequest> testcases) {
         return new JudgeSubmitMessage(
+                UUID.randomUUID().toString(),
+                com.flowstudy.core.common.trace.TraceContext.getTraceId(),
+                1,
+                "JUDGE_RUN_CREATED",
                 RUN_TASK,
                 runId,
                 null,
