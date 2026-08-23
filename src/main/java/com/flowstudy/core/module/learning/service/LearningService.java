@@ -7,6 +7,7 @@ import com.flowstudy.core.common.trace.TraceContext;
 import com.flowstudy.core.module.learning.client.AiAnalysisClient;
 import com.flowstudy.core.module.learning.dto.LearningEventPayload;
 import com.flowstudy.core.module.learning.dto.LearningEventRequest;
+import com.flowstudy.core.module.learning.dto.CreateLearningNoteRequest;
 import com.flowstudy.core.module.learning.entity.LearningEvent;
 import com.flowstudy.core.module.learning.mapper.LearningEventMapper;
 import com.flowstudy.core.module.learning.mapper.LearningNoteMapper;
@@ -107,6 +108,12 @@ public class LearningService {
 
     public List<LearningNoteResponse> getRecentNotes(Long userId) {
         return noteMapper.findRecent(userId, 20);
+    }
+
+    @Transactional
+    public LearningNoteResponse createNote(Long userId, CreateLearningNoteRequest request) {
+        noteMapper.insert(userId, request.title(), request.contentMd());
+        return noteMapper.findRecent(userId, 1).stream().findFirst().orElse(null);
     }
 
     public LearningOverviewResponse getOverview(Long userId, LocalDate startDate, LocalDate endDate) {
