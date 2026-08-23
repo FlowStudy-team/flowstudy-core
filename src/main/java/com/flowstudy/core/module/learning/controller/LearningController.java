@@ -2,6 +2,7 @@ package com.flowstudy.core.module.learning.controller;
 
 import com.flowstudy.core.common.result.Result;
 import com.flowstudy.core.module.learning.dto.LearningEventRequest;
+import com.flowstudy.core.module.learning.dto.CreateLearningNoteRequest;
 import com.flowstudy.core.module.learning.service.LearningService;
 import com.flowstudy.core.module.learning.vo.LearningNoteResponse;
 import com.flowstudy.core.module.learning.vo.ProfileAnalysisResponse;
@@ -51,6 +52,13 @@ public class LearningController {
     @GetMapping("/notes")
     public Result<List<LearningNoteResponse>> getNotes(@AuthenticationPrincipal AuthenticatedUser user) {
         return Result.success(learningService.getRecentNotes(user.id()));
+    }
+
+    @PostMapping("/notes")
+    public Result<LearningNoteResponse> createNote(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody CreateLearningNoteRequest request) {
+        return Result.success(learningService.createNote(user.id(), request));
     }
 
     @GetMapping("/overview")
