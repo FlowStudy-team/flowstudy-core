@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import com.flowstudy.core.module.learning.vo.LearningOverviewResponse.DailyActivity;
 
 @Mapper
 public interface SubmissionMapper {
@@ -104,4 +105,16 @@ public interface SubmissionMapper {
             @Param("problemId") Long problemId,
             @Param("limit") int limit,
             @Param("offset") int offset);
+
+    @Select("SELECT COUNT(1) FROM fs_submission WHERE user_id = #{userId} AND created_at >= #{from} AND created_at < #{to}")
+    long countRecentByUserId(@Param("userId") Long userId, @Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);
+
+    @Select("SELECT COUNT(1) FROM fs_submission WHERE user_id = #{userId} AND status = 'ACCEPTED' AND created_at >= #{from} AND created_at < #{to}")
+    long countAcceptedByUserId(@Param("userId") Long userId, @Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);
+
+    @Select("SELECT COUNT(DISTINCT problem_id) FROM fs_submission WHERE user_id = #{userId} AND status = 'ACCEPTED' AND created_at >= #{from} AND created_at < #{to}")
+    long countSolvedProblems(@Param("userId") Long userId, @Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);
+
+    @Select("SELECT DATE(created_at) AS date, COUNT(1) AS count FROM fs_submission WHERE user_id = #{userId} AND created_at >= #{from} AND created_at < #{to} GROUP BY DATE(created_at) ORDER BY date")
+    List<DailyActivity> findDailyActivity(@Param("userId") Long userId, @Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);
 }

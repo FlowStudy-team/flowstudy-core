@@ -14,6 +14,10 @@ import com.flowstudy.core.module.learning.mapper.UserProfileMapper;
 import com.flowstudy.core.module.learning.vo.LearningNoteResponse;
 import com.flowstudy.core.module.learning.vo.ProfileAnalysisResponse;
 import com.flowstudy.core.module.learning.vo.UserProfileResponse;
+import com.flowstudy.core.module.learning.vo.LearningOverviewResponse;
+import com.flowstudy.core.module.learning.vo.LearningOverviewResponse.DailyActivity;
+import com.flowstudy.core.module.submission.mapper.SubmissionMapper;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -30,18 +34,21 @@ public class LearningService {
     private final LearningNoteMapper noteMapper;
     private final AiAnalysisClient aiAnalysisClient;
     private final ObjectMapper objectMapper;
+    private final SubmissionMapper submissionMapper;
 
     public LearningService(
             LearningEventMapper eventMapper,
             UserProfileMapper profileMapper,
             LearningNoteMapper noteMapper,
             AiAnalysisClient aiAnalysisClient,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            SubmissionMapper submissionMapper) {
         this.eventMapper = eventMapper;
         this.profileMapper = profileMapper;
         this.noteMapper = noteMapper;
         this.aiAnalysisClient = aiAnalysisClient;
         this.objectMapper = objectMapper;
+        this.submissionMapper = submissionMapper;
     }
 
     @Transactional
@@ -100,5 +107,36 @@ public class LearningService {
 
     public List<LearningNoteResponse> getRecentNotes(Long userId) {
         return noteMapper.findRecent(userId, 20);
+    }
+
+    public LearningOverviewResponse getOverview(Long userId, LocalDate startDate, LocalDate endDate) {
+        LocalDate fromDate = startDate == null ? LocalDate.now().minusYears(3).withDayOfYear(1) : startDate;
+        LocalDate toDate = endDate == null ? LocalDate.now().plusDays(1) : endDate.plusDays(1);
+        var from = fromDate.atStartOfDay();
+        var to = toDate.atStartOfDay();
+        List<DailyActivity> reading = eventMapper.findDailyReadingActivity(userId, from, to);
+        List<DailyActivity> submissions = submissionMapper.findDailyActivity(userId, from, to);
+        return new LearningOverviewResponse(
+                submissionMapper.countRecentByUserId(userId, from, to),
+                submissionMapper.countAcceptedByUserId(userId, from, to),
+                submissionMapper.countSolvedProblems(userId, from, to),
+                eventMapper.countLearningDays(userId, from, to),
+                calculateStreak(userId, from, to),
+                reading,
+                submissions);
+    }
+
+    private int calculateStreak(Long userId, java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        List<DailyActivity> days = eventMapper.findDailyReadingActivity(
+                userId, from, to);
+        java.util.Set<LocalDate> active = days.stream().map(DailyActivity::date).collect(java.util.stream.Collectors.toSet());
+        active.addAll(submissionMapper.findDailyActivity(userId, from, to).stream().map(DailyActivity::date).collect(java.util.stream.Collectors.toSet()));
+        int streak = 0;
+        LocalDate cursor = LocalDate.now();
+        while (active.contains(cursor)) {
+            streak++;
+            cursor = cursor.minusDays(1);
+        }
+        return streak;
     }
 }

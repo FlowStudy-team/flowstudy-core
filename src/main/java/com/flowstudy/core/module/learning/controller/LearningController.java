@@ -6,6 +6,8 @@ import com.flowstudy.core.module.learning.service.LearningService;
 import com.flowstudy.core.module.learning.vo.LearningNoteResponse;
 import com.flowstudy.core.module.learning.vo.ProfileAnalysisResponse;
 import com.flowstudy.core.module.learning.vo.UserProfileResponse;
+import com.flowstudy.core.module.learning.vo.LearningOverviewResponse;
+import java.time.LocalDate;
 import com.flowstudy.core.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -48,5 +51,13 @@ public class LearningController {
     @GetMapping("/notes")
     public Result<List<LearningNoteResponse>> getNotes(@AuthenticationPrincipal AuthenticatedUser user) {
         return Result.success(learningService.getRecentNotes(user.id()));
+    }
+
+    @GetMapping("/overview")
+    public Result<LearningOverviewResponse> getOverview(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        return Result.success(learningService.getOverview(user.id(), startDate, endDate));
     }
 }
