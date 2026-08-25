@@ -4,6 +4,7 @@ import com.flowstudy.core.common.exception.BusinessException;
 import com.flowstudy.core.module.auth.dto.LoginRequest;
 import com.flowstudy.core.module.auth.dto.RegisterRequest;
 import com.flowstudy.core.module.auth.vo.LoginResponse;
+import com.flowstudy.core.module.auth.vo.AuthTokenResult;
 import com.flowstudy.core.module.auth.vo.RegisterResponse;
 import com.flowstudy.core.module.user.entity.User;
 import com.flowstudy.core.module.user.mapper.UserMapper;
