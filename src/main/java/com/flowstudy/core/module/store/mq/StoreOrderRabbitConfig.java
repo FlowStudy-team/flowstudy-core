@@ -64,10 +64,10 @@ public class StoreOrderRabbitConfig {
         factory.setConnectionFactory(connectionFactory);
         factory.setConcurrentConsumers(Math.max(1, concurrency));
         factory.setDefaultRequeueRejected(false);
-        factory.setAdviceChain(new org.springframework.retry.interceptor.RetryInterceptorBuilder.StatelessRetryInterceptorBuilder()
+        factory.setAdviceChain(org.springframework.retry.interceptor.RetryInterceptorBuilder.stateless()
                 .maxAttempts(Math.max(1, maxRetries))
                 .backOffOptions(1000L, 2.0, 10000L)
-                .recoverer(new org.springframework.retry.interceptor.RejectAndDontRequeueRecoverer())
+                .recoverer(new org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer())
                 .build());
         return factory;
     }
