@@ -6,6 +6,7 @@ import com.flowstudy.core.common.trace.TraceContext;
 import com.flowstudy.core.module.admin.dto.AdminCouponRequest;
 import com.flowstudy.core.module.admin.dto.AdminProductRequest;
 import com.flowstudy.core.module.admin.mapper.AdminMapper;
+import com.flowstudy.core.module.content.ContentStatusMachine;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,13 +55,14 @@ public class AdminService {
         return page(records, total, page, size);
     }
     public void contentStatus(Long adminId, String type, Long id, String status) {
+        String normalizedStatus = ContentStatusMachine.normalize(status, "DRAFT");
         int updated = switch (type) {
-            case "blogs" -> mapper.updateBlogStatus(id, status);
-            case "tutorials" -> mapper.updateTutorialStatus(id, status);
-            case "problems" -> mapper.updateProblemStatus(id, status);
+            case "blogs" -> mapper.updateBlogStatus(id, normalizedStatus);
+            case "tutorials" -> mapper.updateTutorialStatus(id, normalizedStatus);
+            case "problems" -> mapper.updateProblemStatus(id, normalizedStatus);
             default -> throw bad("unsupported content type");
         };
-        require(updated); audit(adminId, "CONTENT", "UPDATE_STATUS", type, id, "status=" + status);
+        require(updated); audit(adminId, "CONTENT", "UPDATE_STATUS", type, id, "status=" + normalizedStatus);
     }
 
     public List<Map<String, Object>> products() { return mapper.products(); }

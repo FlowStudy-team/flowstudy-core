@@ -13,6 +13,7 @@ import com.flowstudy.core.module.document.vo.DocumentCategoryResponse;
 import com.flowstudy.core.module.document.vo.DocumentDetailResponse;
 import com.flowstudy.core.module.document.vo.DocumentFolderResponse;
 import com.flowstudy.core.module.document.vo.DocumentItemResponse;
+import com.flowstudy.core.module.content.ContentStatusMachine;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -102,7 +103,10 @@ public class DocumentService {
         if (request.folderId() != null) doc.setFolderId(request.folderId());
         if (request.categoryId() != null) doc.setCategoryId(request.categoryId());
         if (request.tags() != null) doc.setTags(String.join(",", request.tags()));
-        if (request.status() != null) doc.setStatus(request.status().trim());
+        if (request.status() != null) {
+            String normalized = ContentStatusMachine.transition(doc.getStatus(), request.status());
+            doc.setStatus(normalized.toLowerCase(java.util.Locale.ROOT));
+        }
         documentMapper.update(doc);
         return getDocument(userId, documentId);
     }
