@@ -5,6 +5,8 @@ import com.flowstudy.core.module.store.dto.CreateOrderRequest;
 import com.flowstudy.core.module.store.entity.MembershipProduct;
 import com.flowstudy.core.module.store.entity.MembershipOrder;
 import com.flowstudy.core.module.store.entity.UserCoupon;
+import com.flowstudy.core.module.store.mq.StoreOrderPublisher;
+import com.flowstudy.core.common.trace.TraceContext;
 import com.flowstudy.core.module.store.mapper.StoreMapper;
 import com.flowstudy.core.module.store.vo.StoreResponses;
 import java.time.LocalDateTime;
@@ -17,8 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StoreService {
     private final StoreMapper mapper;
-    public StoreService(StoreMapper mapper) { this.mapper = mapper; }
-    public List<StoreResponses.Product> products() { return mapper.findActiveProducts().stream().map(StoreResponses.Product::from).toList(); }
+    private final SeckillReservationService reservations;
+    private final StoreOrderPublisher orderPublisher;
+    public StoreService(StoreMapper mapper, SeckillReservationService reservations, StoreOrderPublisher orderPublisher) {
+        this.mapper = mapper;
+        this.reservations = reservations;
+        this.orderPublisher = orderPublisher;
+    }
+    public List<StoreResponses.Product> products() {
+        return mapper.findActiveProducts().stream().peek(p -> reservations.initializeStock(p.getId(), p.getStock()))
+                .map(StoreResponses.Product::from).toList();
+    }
     public List<StoreResponses.Coupon> coupons(Long userId) { return mapper.findAvailableCoupons(userId).stream().map(StoreResponses.Coupon::from).toList(); }
     @Transactional
     public void claimCoupon(Long userId, Long couponId) {
@@ -26,19 +37,20 @@ public class StoreService {
             throw new BusinessException(46008, "coupon is unavailable or already claimed", HttpStatus.CONFLICT);
         }
     }
-    @Transactional
     public StoreResponses.Order createOrder(Long userId, CreateOrderRequest request) {
-        MembershipProduct product = mapper.findProductForUpdate(request.productId());
+        MembershipProduct product = mapper.findActiveProducts().stream()
+                .filter(item -> item.getId().equals(request.productId())).findFirst().orElse(null);
         if (product == null || product.getSaleStartAt() != null && product.getSaleStartAt().isAfter(LocalDateTime.now())) throw new BusinessException(46001, "product is not on sale", HttpStatus.BAD_REQUEST);
-        if (mapper.reserveProduct(product.getId()) != 1) throw new BusinessException(46002, "product is sold out or sale ended", HttpStatus.CONFLICT);
-        UserCoupon coupon = request.userCouponId() == null ? null : mapper.findCouponForUpdate(userId, request.userCouponId());
-        if (request.userCouponId() != null && coupon == null) throw new BusinessException(46003, "coupon is unavailable", HttpStatus.BAD_REQUEST);
-        int discount = coupon == null ? 0 : Math.min(coupon.getDiscountCents(), product.getPriceCents());
-        if (coupon != null && product.getPriceCents() < coupon.getMinOrderCents()) throw new BusinessException(46004, "order amount does not meet coupon requirement", HttpStatus.BAD_REQUEST);
-        if (coupon != null && mapper.useCoupon(userId, coupon.getId()) != 1) throw new BusinessException(46005, "coupon has already been used", HttpStatus.CONFLICT);
         String orderNo = "FS" + System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        mapper.insertOrder(orderNo, userId, product.getId(), coupon == null ? null : coupon.getId(), product.getPriceCents(), discount, product.getPriceCents() - discount, product.getTokenAmount());
-        return StoreResponses.Order.from(mapper.findOrderByNo(userId, orderNo));
+        reservations.reserve(product.getId(), product.getStock(), orderNo);
+        try {
+            orderPublisher.publish(StoreOrderPublisher.message(
+                    TraceContext.getTraceId(), orderNo, userId, product.getId(), request.userCouponId()));
+            return StoreResponses.Order.pending(orderNo, product);
+        } catch (RuntimeException exception) {
+            reservations.release(product.getId(), orderNo);
+            throw exception;
+        }
     }
     @Transactional
     public StoreResponses.Order pay(Long userId, Long orderId) {
