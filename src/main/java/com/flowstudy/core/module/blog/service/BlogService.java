@@ -9,6 +9,9 @@ import com.flowstudy.core.module.blog.mapper.BlogMapper;
 import com.flowstudy.core.module.blog.vo.BlogDetailResponse;
 import com.flowstudy.core.module.blog.vo.BlogSummaryResponse;
 import com.flowstudy.core.module.blog.vo.ProblemSummaryResponse;
+import com.flowstudy.core.module.content.ContentStatusMachine;
+import com.flowstudy.core.module.content.client.ContentSearchClient;
+import com.flowstudy.core.module.content.client.ContentSummaryClient;
 import com.flowstudy.core.module.tutorial.service.TutorialService;
 import java.util.List;
 import org.springframework.context.annotation.Lazy;
@@ -22,10 +25,18 @@ public class BlogService {
 
     private final BlogMapper blogMapper;
     private final TutorialService tutorialService;
+    private final ContentSearchClient searchClient;
+    private final ContentSummaryClient summaryClient;
 
-    public BlogService(BlogMapper blogMapper, @Lazy TutorialService tutorialService) {
+    public BlogService(
+            BlogMapper blogMapper,
+            @Lazy TutorialService tutorialService,
+            ContentSearchClient searchClient,
+            ContentSummaryClient summaryClient) {
         this.blogMapper = blogMapper;
         this.tutorialService = tutorialService;
+        this.searchClient = searchClient;
+        this.summaryClient = summaryClient;
     }
 
     public List<BlogSummaryResponse> getPublishedBlogs(Long tutorialId) {
@@ -90,12 +101,12 @@ public class BlogService {
         blog.setAuthorId(userId);
         blog.setTitle(request.title().trim());
         blog.setContentMd(request.contentMd());
-        blog.setSummary(request.summary() != null ? request.summary().trim() : null);
+        blog.setSummary(resolveSummary(request.title(), request.contentMd(), request.summary()));
         blog.setEstimatedMinutes(request.estimatedMinutes());
         blog.setSortOrder(0);
-        blog.setStatus(request.status() != null && !request.status().isBlank()
-                ? request.status().trim() : "PUBLISHED");
+        blog.setStatus(ContentStatusMachine.normalize(request.status(), "PUBLISHED"));
         blogMapper.insert(blog);
+        syncIndex(blog);
         return getPublishedBlog(blog.getId());
     }
 
@@ -113,11 +124,31 @@ public class BlogService {
         blog.setTutorialId(request.tutorialId());
         blog.setTitle(request.title().trim());
         blog.setContentMd(request.contentMd());
-        blog.setSummary(request.summary() != null ? request.summary().trim() : null);
+        blog.setSummary(resolveSummary(request.title(), request.contentMd(), request.summary()));
         blog.setEstimatedMinutes(request.estimatedMinutes());
-        blog.setStatus(request.status() != null && !request.status().isBlank()
-                ? request.status().trim() : blog.getStatus());
+        blog.setStatus(ContentStatusMachine.transition(blog.getStatus(), request.status()));
         blogMapper.update(blog);
+        syncIndex(blog);
         return getPublishedBlog(blog.getId());
+    }
+
+    private void syncIndex(Blog blog) {
+        try {
+            if ("PUBLISHED".equals(blog.getStatus())) searchClient.indexBlog(blog);
+            else if ("DELETED".equals(blog.getStatus())) searchClient.deleteBlog(blog.getId());
+        } catch (RuntimeException ignored) {
+            // Publishing content must not fail only because the optional search service is unavailable.
+        }
+    }
+
+    private String resolveSummary(String title, String content, String suppliedSummary) {
+        if (suppliedSummary != null && !suppliedSummary.isBlank()) return suppliedSummary.trim();
+        if (!summaryClient.isEnabled()) return null;
+        try {
+            ContentSummaryClient.Summary generated = summaryClient.summarize(title, content);
+            return generated == null || generated.summary() == null ? null : generated.summary().trim();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 }

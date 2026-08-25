@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -59,27 +60,39 @@ class AuthControllerIntegrationTests {
                 "SELECT password_hash FROM sys_user WHERE username = 'learner_1'", String.class);
         org.junit.jupiter.api.Assertions.assertNotEquals("password123", passwordHash);
 
-        String loginBody = mockMvc.perform(post("/api/v1/auth/login")
+        MockHttpServletResponse loginResponse = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Device-Id", "test-device")
                         .content("""
                                 {"account":"learner@example.com","password":"password123"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.data.expiresIn").value(7200))
+                .andExpect(jsonPath("$.data.expiresIn").value(900))
                 .andExpect(jsonPath("$.data.user.username").value("learner_1"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                .andReturn().getResponse();
 
-        JsonNode loginJson = objectMapper.readTree(loginBody);
+        JsonNode loginJson = objectMapper.readTree(loginResponse.getContentAsString());
         String accessToken = loginJson.path("data").path("accessToken").asText();
+        String refreshCookie = loginResponse.getCookie("flowstudy_refresh_token").getValue();
 
         mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.username").value("learner_1"))
                 .andExpect(jsonPath("$.data.email").value("learner@example.com"))
                 .andExpect(jsonPath("$.data.role").value("USER"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .header("X-Device-Id", "test-device")
+                        .cookie(new jakarta.servlet.http.Cookie("flowstudy_refresh_token", refreshCookie)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.expiresIn").value(900));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .header("X-Device-Id", "test-device")
+                        .cookie(new jakarta.servlet.http.Cookie("flowstudy_refresh_token", refreshCookie)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(40101));
     }
 
     @Test
@@ -87,7 +100,7 @@ class AuthControllerIntegrationTests {
         String registration = """
                 {"username":"duplicate","email":"first@example.com","password":"password123"}
                 """;
-        mockMvc.perform(post("/api/v1/auth/register")
+                mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registration))
                 .andExpect(status().isOk());
@@ -98,8 +111,9 @@ class AuthControllerIntegrationTests {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value(41002));
 
-        mockMvc.perform(post("/api/v1/auth/login")
+                mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Device-Id", "test-device")
                         .content("""
                                 {"account":"duplicate","password":"wrong-password"}
                                 """))
