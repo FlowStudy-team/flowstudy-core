@@ -15,9 +15,12 @@ public class SeckillReservationService {
                     + "if stock < 0 then return -2; end; "
                     + "if redis.call('EXISTS', KEYS[2]) == 1 then return -1; end; "
                     + "if stock <= 0 then return 0; end; "
-                    + "redis.call('DECR', KEYS[1]); "
-                    + "redis.call('HSET', KEYS[2], 'status', 'RESERVED', 'productId', ARGV[1]); "
+                    // Redis 3.2 accepts one field/value pair per HSET; keep the script compatible
+                    // with local development and perform all state writes before decrementing stock.
+                    + "redis.call('HSET', KEYS[2], 'status', 'RESERVED'); "
+                    + "redis.call('HSET', KEYS[2], 'productId', ARGV[1]); "
                     + "redis.call('EXPIRE', KEYS[2], ARGV[2]); "
+                    + "redis.call('DECR', KEYS[1]); "
                     + "return 1",
             Long.class);
     private static final DefaultRedisScript<Long> RELEASE_SCRIPT = new DefaultRedisScript<>(
