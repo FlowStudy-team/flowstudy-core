@@ -19,9 +19,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RedisRateLimitFilter extends OncePerRequestFilter {
 
     private static final DefaultRedisScript<Long> RATE_LIMIT_SCRIPT = new DefaultRedisScript<>(
-            "local current = redis.call('incr', KEYS[1]); "
-                    + "if current == 1 then redis.call('expire', KEYS[1], ARGV[1]); end; "
-                    + "return current",
+            "local now = tonumber(ARGV[3]); "
+                    + "local capacity = tonumber(ARGV[1]); "
+                    + "local refill = tonumber(ARGV[2]); "
+                    + "local state = redis.call('HMGET', KEYS[1], 'tokens', 'updatedAt'); "
+                    + "local tokens = tonumber(state[1]); "
+                    + "local updatedAt = tonumber(state[2]); "
+                    + "if tokens == nil or updatedAt == nil then tokens = capacity; updatedAt = now; end; "
+                    + "local elapsed = math.max(0, now - updatedAt) / 1000; "
+                    + "tokens = math.min(capacity, tokens + elapsed * refill); "
+                    + "local allowed = 0; "
+                    + "if tokens >= 1 then tokens = tokens - 1; allowed = 1; end; "
+                    + "redis.call('HSET', KEYS[1], 'tokens', tokens, 'updatedAt', now); "
+                    + "redis.call('EXPIRE', KEYS[1], math.max(1, math.ceil(capacity / refill * 2))); "
+                    + "return allowed",
             Long.class);
 
     private final StringRedisTemplate redisTemplate;
@@ -62,11 +73,15 @@ public class RedisRateLimitFilter extends OncePerRequestFilter {
         String client = request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
         String key = "flowstudy:rate-limit:" + limit.name + ":" + client;
         try {
-            Long count = redisTemplate.execute(
+            int capacity = limit.maxRequests;
+            double refillPerSecond = (double) capacity / windowSeconds;
+            Long allowed = redisTemplate.execute(
                     RATE_LIMIT_SCRIPT,
                     Collections.singletonList(key),
-                    String.valueOf(windowSeconds));
-            if (count != null && count > limit.maxRequests) {
+                    String.valueOf(capacity),
+                    String.valueOf(refillPerSecond),
+                    String.valueOf(System.currentTimeMillis()));
+            if (allowed != null && allowed == 0) {
                 response.setStatus(429);
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                 response.setHeader("Retry-After", String.valueOf(windowSeconds));

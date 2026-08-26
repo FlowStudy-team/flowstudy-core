@@ -20,6 +20,9 @@ public final class StoreResponses {
                         Integer discountAmountCents, Integer payableAmountCents, Integer tokenAmount, String status,
                         LocalDateTime createdAt, LocalDateTime paidAt) {
         public static Order from(MembershipOrder o) { return new Order(o.getId(), o.getOrderNo(), o.getProductId(), o.getProductName(), o.getOriginalAmountCents(), o.getDiscountAmountCents(), o.getPayableAmountCents(), o.getTokenAmount(), o.getStatus(), o.getCreatedAt(), o.getPaidAt()); }
+        public static Order pending(String orderNo, MembershipProduct p) {
+            return new Order(null, orderNo, p.getId(), p.getName(), p.getPriceCents(), 0, p.getPriceCents(), p.getTokenAmount(), "PENDING", null, null);
+        }
     }
     public record TokenAccount(Integer totalTokens, Integer usedTokens, Integer availableTokens) {}
 }
